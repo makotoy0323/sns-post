@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>写真→X投稿文（3案）</title>
+
+  <!-- build-id: 2026-02-02-A1 -->
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#2f8a63">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+
+  <style>
+    :root{
+      --bg:#f6fbf8; --panel:#fff; --line:#d7e7de; --text:#1f2d27; --muted:#4c5f57;
+      --green:#2f8a63; --green2:#1f6f4e; --warnbg:#fff3cd; --warnbd:#e6d48c;
+      --radius:16px;
+      --fz-title:22px; --fz-base:18px; --fz-small:15px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      font-size:var(--fz-base);
+    }
+    main{
+      max-width:520px;
+      margin:0 auto;
+      padding:14px;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      margin:12px 0;
+    }
+    h1{margin:0 0 6px;font-size:var(--fz-title);}
+    .sub{color:var(--muted);font-size:var(--fz-small);}
+    label{display:block;font-weight:900;color:var(--muted);font-size:var(--fz-small);margin:12px 0 6px;}
+    input,select,button{
+      width:100%;
+      font-size:var(--fz-base);
+      padding:12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+    }
+    button{
+      border:none;
+      background:var(--green);
+      color:#fff;
+      font-weight:900;
+    }
+    button:disabled{opacity:.6}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    @media(max-width:520px){.row2{grid-template-columns:1fr}}
+    .warn{
+      display:none;
+      background:var(--warnbg);
+      border:1px solid var(--warnbd);
+      border-radius:12px;
+      padding:10px;
+      font-size:var(--fz-small);
+      white-space:pre-wrap;
+    }
+    .preview{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--line);
+      display:block;
+      margin-top:10px;
+    }
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+    a.btn{
+      display:block;
+      text-align:center;
+      text-decoration:none;
+      padding:12px;
+      border-radius:12px;
+      font-weight:900;
+      color:#fff;
+      background:var(--green2);
+    }
+    details{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;margin-top:10px;}
+    summary{list-style:none;cursor:pointer;padding:12px;font-weight:900;display:flex;justify-content:space-between;gap:10px;}
+    summary::-webkit-details-marker{display:none;}
+    .badge{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:#e6f7ef;color:#2b5c49;font-weight:900;white-space:nowrap;}
+    .pad{padding:12px;border-top:1px solid var(--line);}
+    .post{white-space:pre-wrap;background:#f7faf8;border:1px solid var(--line);padding:12px;border-radius:12px;font-size:17px;line-height:1.55;}
+    .count{margin-top:6px;color:var(--muted);font-size:12px;}
+  </style>
+</head>
+
+<body>
+<main>
+
+  <section class="card">
+    <h1>写真→X投稿文（3案）</h1>
+    <div class="sub">Galaxy A22 5G向け／全角140文字以内／文末に #オフハウス</div>
+  </section>
+
+  <section class="card">
+    <label>Gemini APIキー（端末に保存）</label>
+    <input id="apiKey" type="password" inputmode="text" placeholder="AIza...（ここに貼り付け）" autocomplete="off" />
+    <div class="actions">
+      <button id="btnSaveKey" type="button">キーを保存</button>
+      <button id="btnClearKey" type="button" style="background:#6b7f76;">キーを削除</button>
+    </div>
+    <div class="sub" style="margin-top:8px;">※実験用。端末を変えると再入力が必要です。</div>
+  </section>
+
+  <section class="card">
+    <div class="row2">
+      <div>
+        <label>写真の種類</label>
+        <select id="subjectType">
+          <option value="product" selected>商品（単品）</option>
+          <option value="corner">店内コーナー（売り場）</option>
+        </select>
+      </div>
+      <div>
+        <label>モデル</label>
+        <select id="model">
+          <option value="gemini-2.5-flash" selected>2.5 Flash（軽い）</option>
+          <option value="gemini-2.5-pro">2.5 Pro（高精度）</option>
+        </select>
+      </div>
+    </div>
+
+    <label>① 写真を撮影／取り込み</label>
+    <input id="file" type="file" accept="image/*" capture="environment" />
+
+    <div id="warn" class="warn" style="margin-top:10px;"></div>
+
+    <div id="imgBox" style="display:none;">
+      <img id="preview" class="preview" alt="preview" />
+      <div class="actions">
+        <a id="dlImg" class="btn" href="#" download="photo.jpg">画像を保存</a>
+        <a id="openImg" class="btn" href="#" target="_blank" rel="noopener">別タブで開く</a>
+      </div>
+      <div class="sub" style="margin-top:8px;">※Xへ画像は引き継げないので、必要なら保存して添付してください。</div>
+    </div>
+
+    <button id="btnGen" type="button" style="margin-top:12px;">投稿文を作成（3案）</button>
+  </section>
+
+  <section class="card" id="outCard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+      <div style="font-weight:900;">生成結果</div>
+      <div id="aboutLabel" class="badge"></div>
+    </div>
+
+    <details id="d1" open>
+      <summary><span>案1</span><span class="badge">140文字以内</span></summary>
+      <div class="pad">
+        <div class="post" id="p1"></div>
+        <div class="count" id="c1"></div>
+        <a class="btn" id="x1" href="#" target="_blank" rel="noopener" style="margin-top:10px;">この案でX投稿画面へ</a>
+      </div>
+    </details>
+
+    <details id="d2">
+      <summary><span>案2</span><span class="badge">140文字以内</span></summary>
+      <div class="pad">
+        <div class="post" id="p2"></div>
+        <div class="count" id="c2"></div>
+        <a class="btn" id="x2" href="#" target="_blank" rel="noopener" style="margin-top:10px;">この案でX投稿画面へ</a>
+      </div>
+    </details>
+
+    <details id="d3">
+      <summary><span>案3</span><span class="badge">140文字以内</span></summary>
+      <div class="pad">
+        <div class="post" id="p3"></div>
+        <div class="count" id="c3"></div>
+        <a class="btn" id="x3" href="#" target="_blank" rel="noopener" style="margin-top:10px;">この案でX投稿画面へ</a>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<script type="module">
+  // PWA: SW 登録
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+  }
+
+  const $ = (id) => document.getElementById(id);
+
+  // Google公式のブラウザSDK（APIキーで利用）
+  import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+  const KEY_STORAGE = "sns_gemini_api_key_v1";
+
+  let imageBase64 = "";
+  let mimeType = "image/jpeg";
+  let lastDataUrl = "";
+
+  function showWarn(msg){
+    $("warn").style.display = "block";
+    $("warn").textContent = msg;
+  }
+  function clearWarn(){
+    $("warn").style.display = "none";
+    $("warn").textContent = "";
+  }
+
+  function len140(s){ return (s || "").length; }
+
+  // 140文字に収める（#オフハウスを必ず末尾に確保）
+  function enforce140(text){
+    const tag = "#オフハウス";
+    let t = (text || "").trim();
+
+    // 末尾タグ（重複は整理）
+    t = t.replace(/\s*#オフハウス\s*$/g, "").trim();
+
+    // スペース区切りで付与
+    const suffix = " " + tag;
+    const max = 140;
+
+    // まず付けてみる
+    let out = (t + suffix).trim();
+
+    if (out.length <= max) return out;
+
+    // 長いなら本文を削る（…を付ける）
+    const ell = "…";
+    const keep = max - suffix.length - ell.length;
+    if (keep <= 0) return (tag).slice(0, max); // 念のため
+
+    t = t.slice(0, keep).trimEnd();
+    out = (t + ell + suffix).trim();
+    return out.slice(0, max);
+  }
+
+  function xIntentUrl(text){
+    return "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
+  }
+
+  // 画像を軽量化（幅640 JPEG）→ 通信量/失敗率を下げる
+  async function fileToResizedDataUrl(file){
+    const dataUrl = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const maxW = 640;
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
+  function setPosts(aboutLabel, posts){
+    $("outCard").style.display = "block";
+    $("aboutLabel").textContent = aboutLabel || "";
+
+    const p = [posts?.[0]||"", posts?.[1]||"", posts?.[2]||""].map(enforce140);
+
+    $("p1").textContent = p[0]; $("c1").textContent = `文字数：${len140(p[0])} / 140`; $("x1").href = xIntentUrl(p[0]);
+    $("p2").textContent = p[1]; $("c2").textContent = `文字数：${len140(p[1])} / 140`; $("x2").href = xIntentUrl(p[1]);
+    $("p3").textContent = p[2]; $("c3").textContent = `文字数：${len140(p[2])} / 140`; $("x3").href = xIntentUrl(p[2]);
+
+    $("d1").open = true; $("d2").open = false; $("d3").open = false;
+    $("outCard").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  // APIキー：保存/復元
+  function loadKey(){
+    const k = localStorage.getItem(KEY_STORAGE) || "";
+    $("apiKey").value = k;
+  }
+  function saveKey(){
+    const k = $("apiKey").value.trim();
+    if (!k) return showWarn("APIキーが空です。");
+    localStorage.setItem(KEY_STORAGE, k);
+    showWarn("APIキーを保存しました。");
+  }
+  function clearKey(){
+    localStorage.removeItem(KEY_STORAGE);
+    $("apiKey").value = "";
+    showWarn("APIキーを削除しました。");
+  }
+
+  $("btnSaveKey").addEventListener("click", saveKey);
+  $("btnClearKey").addEventListener("click", clearKey);
+
+  loadKey();
+
+  // 画像選択
+  $("file").addEventListener("change", async (e) => {
+    clearWarn();
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try{
+      const dataUrl = await fileToResizedDataUrl(file);
+      lastDataUrl = dataUrl;
+
+      const m = dataUrl.match(/^data:(.+);base64,(.+)$/);
+      if (!m) throw new Error("画像の読み込みに失敗しました。");
+
+      mimeType = m[1];
+      imageBase64 = m[2];
+
+      $("imgBox").style.display = "block";
+      $("preview").src = dataUrl;
+
+      $("dlImg").href = dataUrl;
+      $("dlImg").setAttribute("download", "photo.jpg");
+
+      $("openImg").href = dataUrl;
+    }catch(err){
+      showWarn("画像処理エラー：\n" + String(err));
+    }
+  });
+
+  // 生成（ブラウザ→Gemini直叩き）
+  $("btnGen").addEventListener("click", async () => {
+    clearWarn();
+
+    const apiKey = ($("apiKey").value || "").trim();
+    if (!apiKey) return showWarn("Gemini APIキーを入力して保存してください。");
+
+    if (!imageBase64) return showWarn("先に写真を撮影（または取り込み）してください。");
+
+    const btn = $("btnGen");
+    btn.disabled = true;
+    btn.textContent = "作成中…（写真を解析しています）";
+
+    try{
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const modelName = $("model").value;
+
+      const subjectType = $("subjectType").value; // product / corner
+      const aboutLabel = (subjectType === "corner") ? "店内コーナーについて" : "商品について";
+
+      // プロンプト：3案、明るく親しみやすい、140以内、タグは末尾、投稿本文に「商品について」等は入れない
+      const prompt = `
+あなたは総合リユースショップのスタッフです。
+写真を見て、X投稿文を日本語で3案作成してください。
+
+条件:
+- 各案は「投稿本文のみ」を出力（見出しや番号は不要）
+- 口調は明るく親しみやすい（店員として自然）
+- 1案あたり全角140文字以内
+- 文末に必ず「#オフハウス」を付ける（本文の途中に入れない）
+- 「${aboutLabel}」という説明は投稿本文に入れない（画面側で表示する）
+- 価格や断定的な真贋判定はしない
+- 写真の内容（商品の特徴／コーナーの雰囲気）が伝わるように
+
+出力形式:
+- 3行だけ出力（各行が1案）
+`.trim();
+
+      const model = genAI.getGenerativeModel({ model: modelName });
+
+      const result = await model.generateContent([
+        { inlineData: { data: imageBase64, mimeType } },
+        { text: prompt }
+      ]);
+
+      const text = result.response.text() || "";
+      const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
+
+      // 3案に整形（足りない/多い場合にも強くする）
+      const posts = [];
+      for (const line of lines){
+        // 余計な先頭記号除去
+        const cleaned = line.replace(/^(案\d+[:：]\s*)/, "").replace(/^[-・*]\s*/, "").trim();
+        if (cleaned) posts.push(cleaned);
+        if (posts.length >= 3) break;
+      }
+
+      // うまく取れない時の保険（文中の区切りがあるパターン）
+      if (posts.length < 3){
+        const chunks = text.split(/(?:\n{2,}|(?:案[1-3][:：])|(?:【案[1-3]】))/g).map(s=>s.trim()).filter(Boolean);
+        for (const c of chunks){
+          const cleaned = c.replace(/^(案\d+[:：]\s*)/, "").replace(/^【案\d+】\s*/, "").trim();
+          if (cleaned) posts.push(cleaned);
+          if (posts.length >= 3) break;
+        }
+      }
+
+      while (posts.length < 3) posts.push("見つけたらラッキーな一品かも♪ ぜひ店頭でチェックしてみてね！ #オフハウス");
+
+      setPosts(aboutLabel, posts.slice(0,3));
+
+    }catch(err){
+      // ここは「通信環境エラー」固定にしない（原因を見える化）
+      showWarn("エラー：\n" + String(err));
+    }finally{
+      btn.disabled = false;
+      btn.textContent = "投稿文を作成（3案）";
+    }
+  });
+</script>
+</body>
+</html>
